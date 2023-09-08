@@ -58,6 +58,8 @@ pub struct Mint {
   pub target_postage: Amount,
   #[clap(long, help = "Remint comint id.")]
   pub remint: Option<Txid>,
+  #[clap(long, help = "Manual input.")]
+  pub inputs: Vec<OutPoint>,
 }
 
 impl Mint {
@@ -150,7 +152,14 @@ impl Mint {
     } else {
       (
         index.get_unspent_outputs_by_mempool_v1(query_address, BTreeMap::new())?,
-        vec![],
+        self
+          .inputs
+          .iter()
+          .map(|item| SatPoint {
+            outpoint: *item,
+            offset: 0,
+          })
+          .collect::<Vec<_>>(),
       )
     };
 

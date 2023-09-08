@@ -131,6 +131,26 @@ struct MintWithPostageData {
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+struct MintWithPostageAndInputParam {
+  fee_rate: f64,
+  source: Address,
+  content: String,
+  destination: Option<Address>,
+  extension: Option<String>,
+  repeat: Option<u64>,
+  target_postage: u64,
+  inputs: Vec<String>
+}
+
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+struct MintWithPostageAndInputData {
+  jsonrpc: Option<String>,
+  id: Option<u32>,
+  method: String,
+  params: MintWithPostageAndInputParam,
+}
+
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 struct MintsWithPostageParam {
   fee_rate: f64,
   source: Address,
@@ -291,6 +311,7 @@ async fn _handle_request(
             repeat: form_data.params.repeat,
             target_postage: TransactionBuilder::TARGET_POSTAGE,
             remint: None,
+            inputs: vec![],
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, false)?;
@@ -516,6 +537,7 @@ async fn _handle_request(
             repeat: form_data.params.repeat,
             target_postage: Amount::from_sat(form_data.params.target_postage),
             remint: None,
+            inputs: vec![],
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, false)?;
@@ -559,6 +581,55 @@ async fn _handle_request(
             repeat: form_data.params.repeat,
             target_postage: Amount::from_sat(form_data.params.target_postage),
             remint: None,
+            inputs: vec![],
+          };
+
+          let output = mint.build(options, Some(service_address), service_fee, mysql, true)?;
+          Ok(Response::new(Body::from(serde_json::to_string(&output)?)))
+        }
+        _ => {
+          let response = Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from("Method not found"))
+            .unwrap();
+          Ok(response)
+        }
+      }
+    },
+    (&Method::POST, Some(&"unsafeMintWithPostageAndInput")) => {
+      let full_body = hyper::body::to_bytes(req.into_body()).await?;
+      let decoded_body = String::from_utf8_lossy(&full_body).to_string();
+
+      let form_data: MintWithPostageAndInputData = match serde_json::from_str(&decoded_body) {
+        Ok(data) => data,
+        Err(_) => {
+          return Ok(Response::new(Body::from("Invalid form data")));
+        }
+      };
+      let source = form_data.params.source;
+      let destination = form_data
+        .params
+        .destination
+        .clone()
+        .unwrap_or(source.clone());
+      let mut inputs: Vec<OutPoint> = vec![];
+      for item in &form_data.params.inputs {
+        inputs.push(OutPoint::from_str(item)?);
+      }
+      info!("unsafeMintWithPostageAndInput from {source} to {destination}");
+
+      match form_data.method.as_str() {
+        "unsafeMintWithPostageAndInput" => {
+          let mint = Mint {
+            fee_rate: FeeRate::try_from(form_data.params.fee_rate)?,
+            destination: form_data.params.destination,
+            source,
+            extension: form_data.params.extension,
+            content: form_data.params.content,
+            repeat: form_data.params.repeat,
+            target_postage: Amount::from_sat(form_data.params.target_postage),
+            remint: None,
+            inputs,
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, true)?;
@@ -644,6 +715,7 @@ async fn _handle_request(
             repeat: form_data.params.repeat,
             target_postage: Amount::from_sat(form_data.params.target_postage),
             remint: Some(Txid::from_str(&form_data.params.remint)?),
+            inputs: vec![],
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, true)?;
