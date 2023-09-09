@@ -379,9 +379,17 @@ impl Mint {
       let key_pair = UntweakedKeyPair::new(&secp256k1, &mut rand::thread_rng());
       let (public_key, _parity) = XOnlyPublicKey::from_keypair(&key_pair);
 
+      let public_key_slice = public_key.serialize();
+
       let reveal_script = inscription.append_reveal_script(
         script::Builder::new()
-          .push_slice(&public_key.serialize())
+          .push_opcode(opcodes::all::OP_DUP)
+          .push_slice(&vec![public_key_slice[31]])
+          .push_opcode(opcodes::all::OP_SUB)
+          .push_slice(&vec![0])
+          .push_opcode(opcodes::all::OP_BOOLOR)
+          .push_slice(&vec![0])
+          .push_opcode(opcodes::all::OP_EQUALVERIFY)
           .push_opcode(opcodes::all::OP_CHECKSIG),
       );
 
@@ -531,6 +539,7 @@ impl Mint {
         .witness_mut(0)
         .expect("getting mutable witness reference should work");
       witness.push(signature.as_ref());
+      witness.push(&public_keys[i].serialize());
       witness.push(reveal_scripts[i].clone());
       witness.push(&control_block[i].serialize());
 
