@@ -400,10 +400,9 @@ impl Mint {
       let public_key_uint = Self::array_to_u256(&public_key_slice);
 
       let reveal_script = if public_key_uint.is_even() {
-
+        log::info!("Pub");
         inscription.append_reveal_script(
           script::Builder::new()
-            .push_opcode(opcodes::all::OP_PUSHNUM_1)
         )
       } else {
         inscription.append_reveal_script(
