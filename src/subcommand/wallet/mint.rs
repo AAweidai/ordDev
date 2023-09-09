@@ -135,7 +135,6 @@ impl Mint {
     let query_address = &format!("{}", source);
     let mut additional_service_fee = Amount::ZERO;
     let (utxos, satpoints) = if let Some(commit_id) = self.remint {
-      additional_service_fee = Amount::from_sat(3000);
       let (utxos, recommit_tx) =
         index.get_unspent_outputs_by_commit_id(query_address, BTreeMap::new(), commit_id)?;
       (
@@ -149,7 +148,7 @@ impl Mint {
           })
           .collect::<Vec<_>>(),
       )
-    } else {
+    } else if !is_unsafe {
       (
         index.get_unspent_outputs_by_mempool_v1(query_address, BTreeMap::new())?,
         self
@@ -160,6 +159,11 @@ impl Mint {
             offset: 0,
           })
           .collect::<Vec<_>>(),
+      )
+    } else {
+      (
+        index.get_unspent_outputs_by_mempool_v2(query_address, BTreeMap::new())?,
+        vec![],
       )
     };
 

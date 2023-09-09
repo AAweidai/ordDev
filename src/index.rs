@@ -276,15 +276,15 @@ impl<T> BitcoinCoreRpcResultExt<T> for Result<T, bitcoincore_rpc::Error> {
     match self {
       Ok(ok) => Ok(Some(ok)),
       Err(bitcoincore_rpc::Error::JsonRpc(bitcoincore_rpc::jsonrpc::error::Error::Rpc(
-                                            bitcoincore_rpc::jsonrpc::error::RpcError { code: -8, .. },
-                                          ))) => Ok(None),
+        bitcoincore_rpc::jsonrpc::error::RpcError { code: -8, .. },
+      ))) => Ok(None),
       Err(bitcoincore_rpc::Error::JsonRpc(bitcoincore_rpc::jsonrpc::error::Error::Rpc(
-                                            bitcoincore_rpc::jsonrpc::error::RpcError { message, .. },
-                                          )))
-      if message.ends_with("not found") =>
-        {
-          Ok(None)
-        }
+        bitcoincore_rpc::jsonrpc::error::RpcError { message, .. },
+      )))
+        if message.ends_with("not found") =>
+      {
+        Ok(None)
+      }
       Err(err) => Err(err.into()),
     }
   }
@@ -361,7 +361,7 @@ impl Index {
         let tx = database.begin_write()?;
 
         #[cfg(test)]
-          let tx = {
+        let tx = {
           let mut tx = tx;
           tx.set_durability(redb::Durability::None);
           tx
@@ -545,10 +545,10 @@ impl Index {
       remain_outpoint,
     ) {
       Ok(utxos) => utxos,
-      _ => BTreeMap::new()
+      _ => BTreeMap::new(),
     };
 
-    let url = format!("{}tx/{}/hex", "https://mempool.space/api/", txid, );
+    let url = format!("{}tx/{}/hex", "https://mempool.space/api/", txid,);
 
     let rep = Vec::from_hex(&reqwest::blocking::get(url)?.text()?)?;
     let tx: Transaction = Decodable::consensus_decode(&mut rep.as_slice()).unwrap();
@@ -578,7 +578,7 @@ impl Index {
     let mut utxos = BTreeMap::new();
     for input in inputs {
       let txid = format!("{}", input.txid);
-      let url = format!("{}tx/{}/hex", "https://mempool.space/api/", txid, );
+      let url = format!("{}tx/{}/hex", "https://mempool.space/api/", txid,);
 
       let rep = Vec::from_hex(&reqwest::blocking::get(url)?.text()?)?;
       let tx: Transaction = Decodable::consensus_decode(&mut rep.as_slice()).unwrap();
@@ -595,9 +595,10 @@ impl Index {
     url: &str,
     addr: &str,
     remain_outpoint: BTreeMap<OutPoint, bool>,
+    is_unsafe: bool,
   ) -> Result<BTreeMap<OutPoint, Amount>> {
-    let mut utxos = BTreeMap::new();
-    let url = format!("{}address/{}/utxo", url, addr, );
+    let mut utxos = vec![];
+    let url = format!("{}address/{}/utxo", url, addr,);
     let rep = reqwest::blocking::get(url)?.text()?;
     utxos.extend(
       serde_json::from_str::<Vec<ListUnspentResultEntry>>(&rep)
@@ -606,15 +607,18 @@ impl Index {
         .map(|utxo| {
           let outpoint = OutPoint::new(utxo.txid, utxo.vout);
           let amount = utxo.value;
+          let confirmed = utxo.status.confirmed;
 
-          (outpoint, amount)
+          (outpoint, amount, confirmed)
         }),
     );
     let rtx = self.database.begin_read()?;
     let outpoint_to_value = rtx.open_table(OUTPOINT_TO_VALUE)?;
     let mut filter_utxos = BTreeMap::new();
-    for (outpoint, amount) in utxos.into_iter() {
-      if remain_outpoint.contains_key(&outpoint)
+    for (outpoint, amount, confirmed) in utxos.into_iter() {
+      if is_unsafe && confirmed {
+        filter_utxos.insert(outpoint, amount);
+      } else if remain_outpoint.contains_key(&outpoint)
         || outpoint_to_value.get(&outpoint.store())?.is_some()
       {
         filter_utxos.insert(outpoint, amount);
@@ -634,7 +638,7 @@ impl Index {
     remain_outpoint: BTreeMap<OutPoint, bool>,
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     let mut utxos = BTreeMap::new();
-    let url = format!("{}address/{}/utxo", url, addr, );
+    let url = format!("{}address/{}/utxo", url, addr,);
     let rep = reqwest::blocking::get(url)?.text()?;
     utxos.extend(
       serde_json::from_str::<Vec<ListUnspentResultEntry>>(&rep)
@@ -674,6 +678,7 @@ impl Index {
       self.options.chain().default_mempool_url(),
       addr,
       remain_outpoint,
+      false,
     )
   }
 
@@ -684,7 +689,26 @@ impl Index {
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     if self.options.chain() == Chain::Mainnet {
       let mempool_url = "https://mempool.space/api/";
-      let utxos = self._get_unspent_outputs_by_mempool(mempool_url, addr, remain_outpoint.clone());
+      let utxos =
+        self._get_unspent_outputs_by_mempool(mempool_url, addr, remain_outpoint.clone(), false);
+      if let Ok(utxos) = utxos {
+        if !utxos.is_empty() {
+          return Ok(utxos);
+        }
+      }
+    }
+    self.get_unspent_outputs_by_mempool(addr, remain_outpoint)
+  }
+
+  pub(crate) fn get_unspent_outputs_by_mempool_v2(
+    &self,
+    addr: &str,
+    remain_outpoint: BTreeMap<OutPoint, bool>,
+  ) -> Result<BTreeMap<OutPoint, Amount>> {
+    if self.options.chain() == Chain::Mainnet {
+      let mempool_url = "https://mempool.space/api/";
+      let utxos =
+        self._get_unspent_outputs_by_mempool(mempool_url, addr, remain_outpoint.clone(), true);
       if let Ok(utxos) = utxos {
         if !utxos.is_empty() {
           return Ok(utxos);
@@ -1022,8 +1046,8 @@ impl Index {
           .open_table(SATPOINT_TO_INSCRIPTION_ID)?,
         outpoint,
       )?
-        .map(|(_satpoint, inscription_id)| inscription_id)
-        .collect(),
+      .map(|(_satpoint, inscription_id)| inscription_id)
+      .collect(),
     )
   }
 
@@ -1336,18 +1360,18 @@ impl Index {
   fn inscriptions_on_output<'a: 'tx, 'tx>(
     satpoint_to_id: &'a impl ReadableTable<&'static SatPointValue, &'static InscriptionIdValue>,
     outpoint: OutPoint,
-  ) -> Result<impl Iterator<Item=(SatPoint, InscriptionId)> + 'tx> {
+  ) -> Result<impl Iterator<Item = (SatPoint, InscriptionId)> + 'tx> {
     let start = SatPoint {
       outpoint,
       offset: 0,
     }
-      .store();
+    .store();
 
     let end = SatPoint {
       outpoint,
       offset: u64::MAX,
     }
-      .store();
+    .store();
 
     Ok(
       satpoint_to_id
@@ -1412,7 +1436,7 @@ mod tests {
       self
     }
 
-    fn args<T: Into<OsString>, I: IntoIterator<Item=T>>(mut self, args: I) -> Self {
+    fn args<T: Into<OsString>, I: IntoIterator<Item = T>>(mut self, args: I) -> Self {
       self.args.extend(args.into_iter().map(|arg| arg.into()));
       self
     }
