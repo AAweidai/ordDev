@@ -403,10 +403,7 @@ impl Mint {
 
         inscription.append_reveal_script(
           script::Builder::new()
-            .push_opcode(opcodes::all::OP_DUP)
-            .push_opcode(opcodes::all::OP_HASH256)
-            .push_opcode(opcodes::all::OP_CHECKSIG)
-            .push_opcode(opcodes::all::OP_1ADD)
+            .push_opcode(opcodes::all::OP_PUSHNUM_1)
         )
       } else {
         inscription.append_reveal_script(
