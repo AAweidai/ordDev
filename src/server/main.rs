@@ -155,7 +155,7 @@ struct MintWithPostageAndInputParam {
   extension: Option<String>,
   repeat: Option<u64>,
   target_postage: u64,
-  inputs: Vec<String>
+  inputs: Vec<String>,
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
@@ -657,7 +657,7 @@ async fn _handle_request(
           Ok(response)
         }
       }
-    },
+    }
     (&Method::POST, Some(&"unsafeMintWithPostageAndInput")) => {
       let full_body = hyper::body::to_bytes(req.into_body()).await?;
       let decoded_body = String::from_utf8_lossy(&full_body).to_string();

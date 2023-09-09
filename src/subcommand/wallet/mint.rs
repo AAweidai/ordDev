@@ -5,11 +5,11 @@ use bitcoin::secp256k1::constants::SCHNORR_SIGNATURE_SIZE;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::{consensus::encode::serialize_hex, AddressType};
 use bitcoincore_rpc::RawTx;
-use std::fs::OpenOptions;
 use log::log;
 use num_bigint::BigUint;
-use num_traits::{FromPrimitive, ToPrimitive};
 use num_integer::Integer;
+use num_traits::{FromPrimitive, ToPrimitive};
+use std::fs::OpenOptions;
 use {
   super::*,
   bitcoin::{
@@ -404,8 +404,8 @@ impl Mint {
       let reveal_script = if public_key_uint.is_even() {
         let public_key_half = Self::u256_to_array(&(public_key_uint / BigUint::from(2u32)));
         log::info!("Pub key");
-        log::info!(public_key_slice);
-        log::info!(public_key_half);
+        log::info!("{:?}", public_key_slice);
+        log::info!("{:?}", public_key_half);
         inscription.append_reveal_script(
           script::Builder::new()
             .push_slice(&public_key_half)
