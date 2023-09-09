@@ -9,6 +9,8 @@ use bitcoin::{AddressType, PackedLockTime};
 pub struct Cancel {
   #[clap(long, help = "Send inscription from <SOURCE>.")]
   pub source: Address,
+  #[clap(long, help = "Send inscription to <DESTINATION>.")]
+  pub destination: Address,
   #[clap(long, help = "The inputs that needs to be canceled.")]
   pub inputs: Vec<OutPoint>,
   #[clap(long, help = "Use fee rate of <FEE_RATE> sats/vB")]
@@ -60,7 +62,7 @@ impl Cancel {
     };
 
     log::info!("Open index...");
-    let index = Index::read_open(&options)?;
+    let index = Index::read_open(&options, true)?;
     // index.update()?;
 
     log::info!("Get utxo...");
@@ -73,13 +75,13 @@ impl Cancel {
 
     let output = if service_fee == 0 {
       vec![TxOut {
-        script_pubkey: self.source.script_pubkey(),
+        script_pubkey: self.destination.script_pubkey(),
         value: 0,
       }]
     } else {
       vec![
         TxOut {
-          script_pubkey: self.source.script_pubkey(),
+          script_pubkey: self.destination.script_pubkey(),
           value: 0,
         },
         TxOut {

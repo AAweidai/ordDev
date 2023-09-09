@@ -112,6 +112,22 @@ struct CancelData {
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+struct CancelV2Param {
+  fee_rate: f64,
+  source: Address,
+  destination: Address,
+  inputs: Vec<String>,
+}
+
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+struct CancelV2Data {
+  jsonrpc: Option<String>,
+  id: Option<u32>,
+  method: String,
+  params: CancelV2Param,
+}
+
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 struct MintWithPostageParam {
   fee_rate: f64,
   source: Address,
@@ -477,6 +493,7 @@ async fn _handle_request(
         }
       };
       let source = form_data.params.source;
+      let destination = source.clone();
       info!("Cancel from {source}");
 
       let mut inputs: Vec<OutPoint> = vec![];
@@ -489,6 +506,51 @@ async fn _handle_request(
           let cancel = Cancel {
             fee_rate: FeeRate::try_from(form_data.params.fee_rate)?,
             source,
+            destination,
+            inputs,
+          };
+          let output = cancel.build(
+            options,
+            Some(service_address),
+            Some(Amount::from_sat(0)),
+            mysql,
+          )?;
+          Ok(Response::new(Body::from(serde_json::to_string(&output)?)))
+        }
+        _ => {
+          let response = Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from("Method not found"))
+            .unwrap();
+          Ok(response)
+        }
+      }
+    }
+    (&Method::POST, Some(&"cancelV2")) => {
+      let full_body = hyper::body::to_bytes(req.into_body()).await?;
+      let decoded_body = String::from_utf8_lossy(&full_body).to_string();
+
+      let form_data: CancelV2Data = match serde_json::from_str(&decoded_body) {
+        Ok(data) => data,
+        Err(_) => {
+          return Ok(Response::new(Body::from("Invalid form data")));
+        }
+      };
+      let source = form_data.params.source;
+      let destination = form_data.params.destination;
+      info!("cancelV2 from {source}");
+
+      let mut inputs: Vec<OutPoint> = vec![];
+      for item in &form_data.params.inputs {
+        inputs.push(OutPoint::from_str(item)?);
+      }
+
+      match form_data.method.as_str() {
+        "cancelV2" => {
+          let cancel = Cancel {
+            fee_rate: FeeRate::try_from(form_data.params.fee_rate)?,
+            source,
+            destination,
             inputs,
           };
           let output = cancel.build(

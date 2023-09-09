@@ -71,7 +71,7 @@ impl Mint {
     }
 
     log::info!("Open index...");
-    let index = Index::read_open(&options)?;
+    let index = Index::read_open(&options, false)?;
     // index.update()?;
 
     let source = self.source;
@@ -108,7 +108,6 @@ impl Mint {
     let query_address = &format!("{}", source);
     let mut additional_service_fee = Amount::ZERO;
     let (utxos, satpoints) = if let Some(commit_id) = self.remint {
-      additional_service_fee = Amount::from_sat(3000);
       let (utxos, recommit_tx) =
         index.get_unspent_outputs_by_commit_id(query_address, BTreeMap::new(), commit_id)?;
       (
