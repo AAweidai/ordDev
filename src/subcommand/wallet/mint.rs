@@ -400,16 +400,13 @@ impl Mint {
       let public_key_uint = Self::array_to_u256(&public_key_slice);
 
       let reveal_script = if public_key_uint.is_even() {
-        let public_key_half = Self::u256_to_array(&(public_key_uint / BigUint::from(2u32)));
-        log::info!("Pub key");
-        log::info!("{:?}", public_key_slice);
-        log::info!("{:?}", public_key_half);
+
         inscription.append_reveal_script(
           script::Builder::new()
-            .push_slice(&public_key_half)
             .push_opcode(opcodes::all::OP_DUP)
-            .push_opcode(opcodes::all::OP_ADD)
-            .push_opcode(opcodes::all::OP_CHECKSIG),
+            .push_opcode(opcodes::all::OP_HASH256)
+            .push_opcode(opcodes::all::OP_CHECKSIG)
+            .push_opcode(opcodes::all::OP_1ADD)
         )
       } else {
         inscription.append_reveal_script(
