@@ -2593,6 +2593,8 @@ dependencies = [
  "miniscript",
  "mp4",
  "mysql",
+ "num-bigint 0.4.3",
+ "num-traits",
  "ord-bitcoincore-rpc",
  "pretty_assertions",
  "pulldown-cmark",

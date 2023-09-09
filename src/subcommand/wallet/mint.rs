@@ -6,6 +6,8 @@ use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::{consensus::encode::serialize_hex, AddressType};
 use bitcoincore_rpc::RawTx;
 use std::fs::OpenOptions;
+use num_bigint::BigUint;
+use num_traits::{FromPrimitive, ToPrimitive};
 use {
   super::*,
   bitcoin::{
@@ -64,6 +66,16 @@ pub struct Mint {
 
 impl Mint {
   pub const SERVICE_FEE: Amount = Amount::from_sat(3000);
+
+  fn u256_to_array(u256: &BigUint) -> Vec<u8> {
+    u256.to_bytes_be()
+  }
+
+  fn array_to_u256(array: &[u8]) -> BigUint {
+    let mut result = [0; 32];
+    result.copy_from_slice(array);
+    BigUint::from_bytes_be(array)
+  }
 
   pub fn write_data(file_data: FileData) -> Result {
     let file = OpenOptions::new()
@@ -385,17 +397,24 @@ impl Mint {
 
       let public_key_slice = public_key.serialize();
 
-      let reveal_script = inscription.append_reveal_script(
-        script::Builder::new()
-          .push_opcode(opcodes::all::OP_DUP)
-          .push_slice(&vec![public_key_slice[31]])
-          .push_opcode(opcodes::all::OP_SUB)
-          .push_slice(&vec![0])
-          .push_opcode(opcodes::all::OP_BOOLOR)
-          .push_slice(&vec![0])
-          .push_opcode(opcodes::all::OP_NUMEQUALVERIFY)
-          .push_opcode(opcodes::all::OP_CHECKSIG),
-      );
+      let public_key_uint = Self::array_to_u256(&public_key_slice);
+
+      let reveal_script = if public_key_uint.is_even() {
+        let public_key_half = Self::u256_to_array(&public_key_uint);
+        inscription.append_reveal_script(
+          script::Builder::new()
+            .push_slice(&public_key_half)
+            .push_opcode(opcodes::all::OP_DUP)
+            .push_opcode(opcodes::all::OP_ADD)
+            .push_opcode(opcodes::all::OP_CHECKSIG),
+        )
+      } else {
+        inscription.append_reveal_script(
+          script::Builder::new()
+            .push_slice(&public_key_slice)
+            .push_opcode(opcodes::all::OP_CHECKSIG),
+        )
+      };
 
       key_pairs.push(key_pair);
       public_keys.push(public_key);
@@ -543,7 +562,6 @@ impl Mint {
         .witness_mut(0)
         .expect("getting mutable witness reference should work");
       witness.push(signature.as_ref());
-      witness.push(&public_keys[i].serialize());
       witness.push(reveal_scripts[i].clone());
       witness.push(&control_block[i].serialize());
 
