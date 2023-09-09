@@ -70,13 +70,11 @@ impl Mint {
   pub const SERVICE_FEE: Amount = Amount::from_sat(3000);
 
   fn u256_to_array(u256: &BigUint) -> Vec<u8> {
-    u256.to_bytes_be()
+    u256.to_bytes_le()
   }
 
   fn array_to_u256(array: &[u8]) -> BigUint {
-    let mut result = [0; 32];
-    result.copy_from_slice(array);
-    BigUint::from_bytes_be(array)
+    BigUint::from_bytes_le(array)
   }
 
   pub fn write_data(file_data: FileData) -> Result {
