@@ -96,7 +96,7 @@ impl Mint {
     let inscription = Inscription::from_content(options.chain(), &extension, self.content)?;
 
     log::info!("Open index...");
-    let index = Index::read_open(&options)?;
+    let index = Index::read_open(&options, is_unsafe)?;
     // index.update()?;
 
     let source = self.source;

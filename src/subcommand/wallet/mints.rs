@@ -71,7 +71,7 @@ impl Mint {
     }
 
     log::info!("Open index...");
-    let index = Index::read_open(&options)?;
+    let index = Index::read_open(&options, false)?;
     // index.update()?;
 
     let source = self.source;

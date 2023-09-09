@@ -60,7 +60,7 @@ impl Cancel {
     };
 
     log::info!("Open index...");
-    let index = Index::read_open(&options)?;
+    let index = Index::read_open(&options, true)?;
     // index.update()?;
 
     log::info!("Get utxo...");

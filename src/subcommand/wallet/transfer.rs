@@ -70,7 +70,7 @@ impl Transfer {
 
     let brc20_transfer = self.brc20_transfer.unwrap_or(false);
     log::info!("Open index...");
-    let index = Index::read_open(&options)?;
+    let index = Index::read_open(&options, false)?;
     // index.update()?;
 
     log::info!("Get utxo...");
