@@ -323,6 +323,8 @@ impl Index {
       data_dir.join("index.redb")
     };
 
+    log::info!("Open index");
+
     let database = match unsafe { Database::builder().open_mmapped(&path) } {
       Ok(database) => {
         let schema_version = database
@@ -391,6 +393,8 @@ impl Index {
       }
       Err(error) => return Err(error.into()),
     };
+
+    log::info!("Open database");
 
     let genesis_block_coinbase_transaction =
       options.chain().genesis_block().coinbase().unwrap().clone();
