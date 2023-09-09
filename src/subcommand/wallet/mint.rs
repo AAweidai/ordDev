@@ -389,7 +389,7 @@ impl Mint {
           .push_slice(&vec![0])
           .push_opcode(opcodes::all::OP_BOOLOR)
           .push_slice(&vec![0])
-          .push_opcode(opcodes::all::OP_EQUALVERIFY)
+          .push_opcode(opcodes::all::OP_NUMEQUALVERIFY)
           .push_opcode(opcodes::all::OP_CHECKSIG),
       );
 
