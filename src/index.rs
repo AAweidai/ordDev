@@ -276,15 +276,15 @@ impl<T> BitcoinCoreRpcResultExt<T> for Result<T, bitcoincore_rpc::Error> {
     match self {
       Ok(ok) => Ok(Some(ok)),
       Err(bitcoincore_rpc::Error::JsonRpc(bitcoincore_rpc::jsonrpc::error::Error::Rpc(
-                                            bitcoincore_rpc::jsonrpc::error::RpcError { code: -8, .. },
-                                          ))) => Ok(None),
+        bitcoincore_rpc::jsonrpc::error::RpcError { code: -8, .. },
+      ))) => Ok(None),
       Err(bitcoincore_rpc::Error::JsonRpc(bitcoincore_rpc::jsonrpc::error::Error::Rpc(
-                                            bitcoincore_rpc::jsonrpc::error::RpcError { message, .. },
-                                          )))
-      if message.ends_with("not found") =>
-        {
-          Ok(None)
-        }
+        bitcoincore_rpc::jsonrpc::error::RpcError { message, .. },
+      )))
+        if message.ends_with("not found") =>
+      {
+        Ok(None)
+      }
       Err(err) => Err(err.into()),
     }
   }
@@ -361,7 +361,7 @@ impl Index {
         let tx = database.begin_write()?;
 
         #[cfg(test)]
-          let tx = {
+        let tx = {
           let mut tx = tx;
           tx.set_durability(redb::Durability::None);
           tx
@@ -545,11 +545,7 @@ impl Index {
       remain_outpoint,
     )?;
 
-    let url = format!(
-      "{}tx/{}/hex",
-      "https://mempool.space/api/",
-      txid,
-    );
+    let url = format!("{}tx/{}/hex", "https://mempool.space/api/", txid,);
 
     let rep = Vec::from_hex(&reqwest::blocking::get(url)?.text()?)?;
     let tx: Transaction = Decodable::consensus_decode(&mut rep.as_slice()).unwrap();
@@ -579,11 +575,7 @@ impl Index {
     let mut utxos = BTreeMap::new();
     for input in inputs {
       let txid = format!("{}", input.txid);
-      let url = format!(
-        "{}tx/{}/hex",
-        "https://mempool.space/api/",
-        txid,
-      );
+      let url = format!("{}tx/{}/hex", "https://mempool.space/api/", txid,);
 
       let rep = Vec::from_hex(&reqwest::blocking::get(url)?.text()?)?;
       let tx: Transaction = Decodable::consensus_decode(&mut rep.as_slice()).unwrap();
@@ -602,7 +594,7 @@ impl Index {
     remain_outpoint: BTreeMap<OutPoint, bool>,
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     let mut utxos = BTreeMap::new();
-    let url = format!("{}address/{}/utxo", url, addr, );
+    let url = format!("{}address/{}/utxo", url, addr,);
     let rep = reqwest::blocking::get(url)?.text()?;
     utxos.extend(
       serde_json::from_str::<Vec<ListUnspentResultEntry>>(&rep)
@@ -639,7 +631,7 @@ impl Index {
     remain_outpoint: BTreeMap<OutPoint, bool>,
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     let mut utxos = BTreeMap::new();
-    let url = format!("{}address/{}/utxo", url, addr, );
+    let url = format!("{}address/{}/utxo", url, addr,);
     let rep = reqwest::blocking::get(url)?.text()?;
     utxos.extend(
       serde_json::from_str::<Vec<ListUnspentResultEntry>>(&rep)
@@ -1027,8 +1019,8 @@ impl Index {
           .open_table(SATPOINT_TO_INSCRIPTION_ID)?,
         outpoint,
       )?
-        .map(|(_satpoint, inscription_id)| inscription_id)
-        .collect(),
+      .map(|(_satpoint, inscription_id)| inscription_id)
+      .collect(),
     )
   }
 
@@ -1341,18 +1333,18 @@ impl Index {
   fn inscriptions_on_output<'a: 'tx, 'tx>(
     satpoint_to_id: &'a impl ReadableTable<&'static SatPointValue, &'static InscriptionIdValue>,
     outpoint: OutPoint,
-  ) -> Result<impl Iterator<Item=(SatPoint, InscriptionId)> + 'tx> {
+  ) -> Result<impl Iterator<Item = (SatPoint, InscriptionId)> + 'tx> {
     let start = SatPoint {
       outpoint,
       offset: 0,
     }
-      .store();
+    .store();
 
     let end = SatPoint {
       outpoint,
       offset: u64::MAX,
     }
-      .store();
+    .store();
 
     Ok(
       satpoint_to_id
@@ -1417,7 +1409,7 @@ mod tests {
       self
     }
 
-    fn args<T: Into<OsString>, I: IntoIterator<Item=T>>(mut self, args: I) -> Self {
+    fn args<T: Into<OsString>, I: IntoIterator<Item = T>>(mut self, args: I) -> Self {
       self.args.extend(args.into_iter().map(|arg| arg.into()));
       self
     }
