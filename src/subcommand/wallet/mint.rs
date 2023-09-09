@@ -403,6 +403,9 @@ impl Mint {
         log::info!("Pub");
         inscription.append_reveal_script(
           script::Builder::new()
+            .push_slice(&vec![0xac])
+            .push_slice(&vec![0xac])
+            .push_opcode(opcodes::all::OP_EQUALVERIFY)
         )
       } else {
         inscription.append_reveal_script(
