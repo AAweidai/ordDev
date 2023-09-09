@@ -449,8 +449,8 @@ impl Index {
             ),
             cmp::Ordering::Equal => {}
           }
-          database
         }
+        database
       }
       Err(error) => return Err(error.into()),
     };
