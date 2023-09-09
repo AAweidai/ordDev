@@ -310,7 +310,7 @@ pub struct ListUnspentResultEntry {
 impl Index {
   pub fn open(options: &Options) -> Result<Self> {
     let client = options.bitcoin_rpc_client()?;
-
+    log::info!("Create client finish");
     let data_dir = options.data_dir()?;
 
     if let Err(err) = fs::create_dir_all(&data_dir) {
