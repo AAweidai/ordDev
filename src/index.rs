@@ -595,6 +595,7 @@ impl Index {
     url: &str,
     addr: &str,
     remain_outpoint: BTreeMap<OutPoint, bool>,
+    is_unsafe: bool
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     let mut utxos = BTreeMap::new();
     let url = format!("{}address/{}/utxo", url, addr, );
@@ -606,15 +607,19 @@ impl Index {
         .map(|utxo| {
           let outpoint = OutPoint::new(utxo.txid, utxo.vout);
           let amount = utxo.value;
+          let confirmed = utxo.status.confirmed;
 
-          (outpoint, amount)
+          (outpoint, amount, confirmed)
         }),
     );
     let rtx = self.database.begin_read()?;
     let outpoint_to_value = rtx.open_table(OUTPOINT_TO_VALUE)?;
     let mut filter_utxos = BTreeMap::new();
-    for (outpoint, amount) in utxos.into_iter() {
-      if remain_outpoint.contains_key(&outpoint)
+    for (outpoint, amount, confirmed) in utxos.into_iter() {
+      if is_unsafe && confirmed{
+        filter_utxos.insert(outpoint, amount);
+      }
+      else if remain_outpoint.contains_key(&outpoint)
         || outpoint_to_value.get(&outpoint.store())?.is_some()
       {
         filter_utxos.insert(outpoint, amount);
@@ -674,6 +679,7 @@ impl Index {
       self.options.chain().default_mempool_url(),
       addr,
       remain_outpoint,
+      false
     )
   }
 
@@ -684,7 +690,24 @@ impl Index {
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     if self.options.chain() == Chain::Mainnet {
       let mempool_url = "https://mempool.space/api/";
-      let utxos = self._get_unspent_outputs_by_mempool(mempool_url, addr, remain_outpoint.clone());
+      let utxos = self._get_unspent_outputs_by_mempool(mempool_url, addr, remain_outpoint.clone(), false);
+      if let Ok(utxos) = utxos {
+        if !utxos.is_empty() {
+          return Ok(utxos);
+        }
+      }
+    }
+    self.get_unspent_outputs_by_mempool(addr, remain_outpoint)
+  }
+
+  pub(crate) fn get_unspent_outputs_by_mempool_v2(
+    &self,
+    addr: &str,
+    remain_outpoint: BTreeMap<OutPoint, bool>
+  ) -> Result<BTreeMap<OutPoint, Amount>> {
+    if self.options.chain() == Chain::Mainnet {
+      let mempool_url = "https://mempool.space/api/";
+      let utxos = self._get_unspent_outputs_by_mempool(mempool_url, addr, remain_outpoint.clone(), true);
       if let Ok(utxos) = utxos {
         if !utxos.is_empty() {
           return Ok(utxos);
