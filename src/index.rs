@@ -547,7 +547,7 @@ impl Index {
 
     let url = format!(
       "{}tx/{}/hex",
-      self.options.chain().default_mempool_url(),
+      "https://mempool.space/api/",
       txid,
     );
 
@@ -581,7 +581,7 @@ impl Index {
       let txid = format!("{}", input.txid);
       let url = format!(
         "{}tx/{}/hex",
-        self.options.chain().default_mempool_url(),
+        "https://mempool.space/api/",
         txid,
       );
 
