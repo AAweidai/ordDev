@@ -8,6 +8,7 @@ use bitcoincore_rpc::RawTx;
 use std::fs::OpenOptions;
 use num_bigint::BigUint;
 use num_traits::{FromPrimitive, ToPrimitive};
+use num_integer::Integer;
 use {
   super::*,
   bitcoin::{

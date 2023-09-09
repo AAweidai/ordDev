@@ -2594,6 +2594,7 @@ dependencies = [
  "mp4",
  "mysql",
  "num-bigint 0.4.3",
+ "num-integer",
  "num-traits",
  "ord-bitcoincore-rpc",
  "pretty_assertions",
