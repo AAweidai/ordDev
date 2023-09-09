@@ -147,9 +147,14 @@ impl Mint {
           })
           .collect::<Vec<_>>(),
       )
-    } else {
+    } else if !is_unsafe {
       (
         index.get_unspent_outputs_by_mempool_v1(query_address, BTreeMap::new())?,
+        vec![],
+      )
+    } else {
+      (
+        index.get_unspent_outputs_by_mempool_v2(query_address, BTreeMap::new())?,
         vec![],
       )
     };
