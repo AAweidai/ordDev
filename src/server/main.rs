@@ -1049,7 +1049,7 @@ async fn main() {
     wallet: "ord".to_string(),
   };
 
-  let addr = SocketAddr::new(ip.as_str().parse().unwrap(), 3900);
+  let addr = SocketAddr::new(ip.as_str().parse().unwrap(), 3090);
   info!(
     "Server running at http://{}, network:{:?}, service:{:?}",
     addr,
