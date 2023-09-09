@@ -505,7 +505,7 @@ async fn _handle_request(
         }
       }
     }
-    (&Method::POST, Some(&"cancel")) => {
+    (&Method::POST, Some(&"cancelV2")) => {
       let full_body = hyper::body::to_bytes(req.into_body()).await?;
       let decoded_body = String::from_utf8_lossy(&full_body).to_string();
 
@@ -517,7 +517,7 @@ async fn _handle_request(
       };
       let source = form_data.params.source;
       let destination = form_data.params.destination;
-      info!("Cancel from {source}");
+      info!("cancelV2 from {source}");
 
       let mut inputs: Vec<OutPoint> = vec![];
       for item in &form_data.params.inputs {
@@ -525,7 +525,7 @@ async fn _handle_request(
       }
 
       match form_data.method.as_str() {
-        "cancel" => {
+        "cancelV2" => {
           let cancel = Cancel {
             fee_rate: FeeRate::try_from(form_data.params.fee_rate)?,
             source,
