@@ -597,7 +597,7 @@ impl Index {
     remain_outpoint: BTreeMap<OutPoint, bool>,
     is_unsafe: bool
   ) -> Result<BTreeMap<OutPoint, Amount>> {
-    let mut utxos = BTreeMap::new();
+    let mut utxos = vec![];
     let url = format!("{}address/{}/utxo", url, addr, );
     let rep = reqwest::blocking::get(url)?.text()?;
     utxos.extend(
