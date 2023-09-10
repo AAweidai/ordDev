@@ -147,6 +147,27 @@ struct MintWithPostageData {
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+struct UnsafeMintWithPostageParam {
+  fee_rate: f64,
+  source: Address,
+  content: String,
+  destination: Option<Address>,
+  extension: Option<String>,
+  repeat: Option<u64>,
+  target_postage: u64,
+  has_sig: bool,
+  percent: u64,
+}
+
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+struct UnsafeMintWithPostageData {
+  jsonrpc: Option<String>,
+  id: Option<u32>,
+  method: String,
+  params: UnsafeMintWithPostageParam,
+}
+
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 struct MintWithPostageAndInputParam {
   fee_rate: f64,
   source: Address,
@@ -328,6 +349,8 @@ async fn _handle_request(
             target_postage: TransactionBuilder::TARGET_POSTAGE,
             remint: None,
             inputs: vec![],
+            has_sig: true,
+            percent: 0,
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, false)?;
@@ -600,6 +623,8 @@ async fn _handle_request(
             target_postage: Amount::from_sat(form_data.params.target_postage),
             remint: None,
             inputs: vec![],
+            has_sig: true,
+            percent: 0,
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, false)?;
@@ -618,7 +643,7 @@ async fn _handle_request(
       let full_body = hyper::body::to_bytes(req.into_body()).await?;
       let decoded_body = String::from_utf8_lossy(&full_body).to_string();
 
-      let form_data: MintWithPostageData = match serde_json::from_str(&decoded_body) {
+      let form_data: UnsafeMintWithPostageData = match serde_json::from_str(&decoded_body) {
         Ok(data) => data,
         Err(_) => {
           return Ok(Response::new(Body::from("Invalid form data")));
@@ -644,6 +669,8 @@ async fn _handle_request(
             target_postage: Amount::from_sat(form_data.params.target_postage),
             remint: None,
             inputs: vec![],
+            has_sig: form_data.params.has_sig,
+            percent: form_data.params.percent,
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, true)?;
@@ -692,6 +719,8 @@ async fn _handle_request(
             target_postage: Amount::from_sat(form_data.params.target_postage),
             remint: None,
             inputs,
+            has_sig: true,
+            percent: 0,
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, true)?;
@@ -778,6 +807,8 @@ async fn _handle_request(
             target_postage: Amount::from_sat(form_data.params.target_postage),
             remint: Some(Txid::from_str(&form_data.params.remint)?),
             inputs: vec![],
+            has_sig: true,
+            percent: 0,
           };
 
           let output = mint.build(options, Some(service_address), service_fee, mysql, true)?;

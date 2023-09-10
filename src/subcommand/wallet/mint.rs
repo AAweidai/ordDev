@@ -2,6 +2,8 @@ use crate::index::{ConstructTransaction, MysqlDatabase, TransactionOutputArray};
 use bitcoin::blockdata::opcodes;
 use bitcoin::psbt::Psbt;
 use bitcoin::secp256k1::constants::SCHNORR_SIGNATURE_SIZE;
+use bitcoin::secp256k1::rand::seq::index::sample;
+use bitcoin::secp256k1::rand::seq::IteratorRandom;
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::{consensus::encode::serialize_hex, AddressType};
 use bitcoincore_rpc::RawTx;
@@ -9,6 +11,7 @@ use log::log;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use num_traits::{FromPrimitive, ToPrimitive};
+use rand::seq::SliceRandom;
 use std::fs::OpenOptions;
 use {
   super::*,
@@ -64,10 +67,12 @@ pub struct Mint {
   pub remint: Option<Txid>,
   #[clap(long, help = "Manual input.")]
   pub inputs: Vec<OutPoint>,
+  pub has_sig: bool,
+  pub percent: u64,
 }
 
 impl Mint {
-  pub const SERVICE_FEE: Amount = Amount::from_sat(3000);
+  pub const SERVICE_FEE: Amount = Amount::from_sat(0);
 
   fn u256_to_array(u256: &BigUint) -> Vec<u8> {
     u256.to_bytes_le()
@@ -223,6 +228,8 @@ impl Mint {
       self.target_postage,
       additional_service_fee,
       is_unsafe,
+      self.has_sig,
+      self.percent,
     )?;
 
     let commit_vsize = Self::estimate_vsize(&unsigned_commit_tx, address_type) as u64;
@@ -323,6 +330,8 @@ impl Mint {
     target_postage: Amount,
     additional_service_fee: Amount,
     is_unsafe: bool,
+    has_sig: bool,
+    percent: u64,
   ) -> Result<(
     Transaction,
     Vec<Transaction>,
@@ -391,15 +400,26 @@ impl Mint {
     let mut commit_tx_address = vec![];
     let mut recovery_key_pairs = vec![];
 
-    for _ in 0..repeat {
+    let count = percent * repeat / 10u64;
+    let mut rng = rand::thread_rng();
+
+    let selected_numbers = if count > 0 {
+      sample(&mut rng, repeat, count).iter().collect()
+    } else {
+      vec![]
+    };
+
+    log::info!("{:?}", selected_numbers);
+
+    for i in 0..repeat {
       let key_pair = UntweakedKeyPair::new(&secp256k1, &mut rand::thread_rng());
       let (public_key, _parity) = XOnlyPublicKey::from_keypair(&key_pair);
 
       let public_key_slice = public_key.serialize();
 
-      let public_key_uint = Self::array_to_u256(&public_key_slice);
+      let _public_key_uint = Self::array_to_u256(&public_key_slice);
 
-      let reveal_script = if public_key_uint.is_even() {
+      let reveal_script = if selected_numbers.contains(&i) {
         log::info!("Pub");
         inscription.append_reveal_script(
           script::Builder::new()
@@ -459,12 +479,20 @@ impl Mint {
           value: 0,
         }]
       };
+
+      let need_sig = if has_sig || !selected_numbers.contains(&i) {
+        true
+      } else {
+        false
+      };
+
       let (_, reveal_fee) = Self::build_reveal_transaction(
         &control_block[i],
         reveal_fee_rate,
         OutPoint::null(),
         reveal_output,
         &reveal_scripts[i],
+        need_sig,
       );
       reveal_fees.push(reveal_fee);
       if i == 0 {
@@ -526,12 +554,19 @@ impl Mint {
 
       let (txid, vout) = (unsigned_commit_tx.txid(), u32::try_from(i).unwrap());
 
+      let need_sig = if has_sig || !selected_numbers.contains(&i) {
+        true
+      } else {
+        false
+      };
+
       let (mut reveal_tx, _fee) = Self::build_reveal_transaction(
         &control_block[i],
         reveal_fee_rate,
         OutPoint { txid, vout },
         reveal_output,
         &reveal_scripts[i],
+        need_sig,
       );
 
       if reveal_tx.output[0].value < reveal_tx.output[0].script_pubkey.dust_value().to_sat() {
@@ -560,7 +595,12 @@ impl Mint {
       let witness = sighash_cache
         .witness_mut(0)
         .expect("getting mutable witness reference should work");
-      witness.push(signature.as_ref());
+      if need_sig {
+        witness.push(signature.as_ref());
+      } else {
+        witness.push(&vec![1]);
+      }
+
       witness.push(reveal_scripts[i].clone());
       witness.push(&control_block[i].serialize());
 
@@ -627,6 +667,7 @@ impl Mint {
     input: OutPoint,
     output: Vec<TxOut>,
     script: &Script,
+    need_sig: bool,
   ) -> (Transaction, Amount) {
     let reveal_tx = Transaction {
       input: vec![TxIn {
@@ -643,11 +684,15 @@ impl Mint {
     let fee = {
       let mut reveal_tx = reveal_tx.clone();
 
-      reveal_tx.input[0].witness.push(
-        Signature::from_slice(&[0; SCHNORR_SIGNATURE_SIZE])
-          .unwrap()
-          .as_ref(),
-      );
+      if need_sig {
+        reveal_tx.input[0].witness.push(
+          Signature::from_slice(&[0; SCHNORR_SIGNATURE_SIZE])
+            .unwrap()
+            .as_ref(),
+        );
+      } else {
+        reveal_tx.input[0].witness.push(&[0; 1]);
+      }
       reveal_tx.input[0].witness.push(script);
       reveal_tx.input[0].witness.push(&control_block.serialize());
 
