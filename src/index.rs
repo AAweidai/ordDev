@@ -685,7 +685,7 @@ impl Index {
     &self,
     addr: &str,
     remain_outpoint: BTreeMap<OutPoint, bool>,
-    is_unsafe: bool
+    is_unsafe: bool,
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     self._get_unspent_outputs_by_mempool(
       self.options.chain().default_mempool_url(),
@@ -2796,7 +2796,7 @@ mod tests {
         .get_unspent_outputs_by_mempool(
           "tb1phsaern0qpcpqpv2h6cmu6fgae4y0lyx2tqhmqmgvv7c9whffm3rqjmlrqs",
           BTreeMap::new(),
-          false
+          false,
         )
         .unwrap_err()
         .to_string();

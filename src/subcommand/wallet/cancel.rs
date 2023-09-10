@@ -68,9 +68,9 @@ impl Cancel {
     log::info!("Get utxo...");
     let cancel_unspent_outputs = index.get_unspent_outputs_by_outpoints(&self.inputs)?;
 
-    let mut all_unspent_outputs = index.get_unspent_outputs_by_mempool_v2(
-      &format!("{}", source),
-      BTreeMap::new()).unwrap_or(BTreeMap::new());
+    let mut all_unspent_outputs = index
+      .get_unspent_outputs_by_mempool_v2(&format!("{}", source), BTreeMap::new())
+      .unwrap_or(BTreeMap::new());
     all_unspent_outputs.extend(cancel_unspent_outputs.clone());
 
     let mut service_fee = service_fee.unwrap_or(Amount::ZERO).to_sat();
@@ -96,8 +96,12 @@ impl Cancel {
       ]
     };
 
-    let (mut cancel_tx, mut network_fee) =
-      Self::build_cancel_transaction(self.fee_rate, self.inputs.clone(), output.clone(), address_type);
+    let (mut cancel_tx, mut network_fee) = Self::build_cancel_transaction(
+      self.fee_rate,
+      self.inputs.clone(),
+      output.clone(),
+      address_type,
+    );
 
     let mut commit_vsize = cancel_tx.vsize() as u64;
 
@@ -118,7 +122,8 @@ impl Cancel {
 
       let mut additional_inputs: Vec<OutPoint> = vec![];
 
-      let mut entries: Vec<(OutPoint, Amount)> = diff_unspent_outputs.iter().map(|o, a| (o, a)).collect();
+      let mut entries: Vec<(OutPoint, Amount)> =
+        diff_unspent_outputs.iter().map(|(o, a)| (*o, *a)).collect();
       entries.sort_by(|a, b| b.1.cmp(&a.1));
 
       let mut cur_amounts = 0;
@@ -152,7 +157,6 @@ impl Cancel {
         bail!("Input amount less than network fee, has search next two");
       }
     }
-
 
     cancel_tx.output[0].value = input_amount - network_fee;
     for input in &mut cancel_tx.input {
