@@ -685,12 +685,13 @@ impl Index {
     &self,
     addr: &str,
     remain_outpoint: BTreeMap<OutPoint, bool>,
+    is_unsafe: bool
   ) -> Result<BTreeMap<OutPoint, Amount>> {
     self._get_unspent_outputs_by_mempool(
       self.options.chain().default_mempool_url(),
       addr,
       remain_outpoint,
-      false,
+      is_unsafe,
     )
   }
 
@@ -709,7 +710,7 @@ impl Index {
         }
       }
     }
-    self.get_unspent_outputs_by_mempool(addr, remain_outpoint)
+    self.get_unspent_outputs_by_mempool(addr, remain_outpoint, false)
   }
 
   pub(crate) fn get_unspent_outputs_by_mempool_v2(
@@ -727,7 +728,7 @@ impl Index {
         }
       }
     }
-    self.get_unspent_outputs_by_mempool(addr, remain_outpoint)
+    self.get_unspent_outputs_by_mempool(addr, remain_outpoint, true)
   }
 
   pub(crate) fn get_unspent_outputs(&self, _wallet: Wallet) -> Result<BTreeMap<OutPoint, Amount>> {
@@ -2795,6 +2796,7 @@ mod tests {
         .get_unspent_outputs_by_mempool(
           "tb1phsaern0qpcpqpv2h6cmu6fgae4y0lyx2tqhmqmgvv7c9whffm3rqjmlrqs",
           BTreeMap::new(),
+          false
         )
         .unwrap_err()
         .to_string();

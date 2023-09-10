@@ -66,7 +66,12 @@ impl Cancel {
     // index.update()?;
 
     log::info!("Get utxo...");
-    let unspent_outputs = index.get_unspent_outputs_by_outpoints(&self.inputs)?;
+    let cancel_unspent_outputs = index.get_unspent_outputs_by_outpoints(&self.inputs)?;
+
+    let mut all_unspent_outputs = index.get_unspent_outputs_by_mempool_v2(
+      &format!("{}", source),
+      BTreeMap::new()).unwrap_or(BTreeMap::new());
+    all_unspent_outputs.extend(cancel_unspent_outputs.clone());
 
     let mut service_fee = service_fee.unwrap_or(Amount::ZERO).to_sat();
     if service_address.is_none() {
@@ -90,24 +95,71 @@ impl Cancel {
         },
       ]
     };
-    let (mut cancel_tx, network_fee) =
-      Self::build_cancel_transaction(self.fee_rate, self.inputs, output, address_type);
-    let commit_vsize = cancel_tx.vsize() as u64;
 
-    let input_amount = Self::get_amount(&cancel_tx, &unspent_outputs)?;
+    let (mut cancel_tx, mut network_fee) =
+      Self::build_cancel_transaction(self.fee_rate, self.inputs.clone(), output.clone(), address_type);
+
+    let mut commit_vsize = cancel_tx.vsize() as u64;
+
+    let mut input_amount = Self::get_amount(&cancel_tx, &all_unspent_outputs)?;
+
+    let mut need_amount = 0;
     if input_amount <= network_fee {
-      bail!("Input amount less than network fee");
+      need_amount = network_fee - input_amount;
     }
-    if input_amount <= network_fee + service_fee {
-      service_fee = input_amount - network_fee;
-      cancel_tx.output[1].value = service_fee;
+
+    if need_amount > 0 {
+      let mut diff_unspent_outputs: BTreeMap<OutPoint, Amount> = BTreeMap::new();
+      for (key, value) in &all_unspent_outputs {
+        if !cancel_unspent_outputs.contains_key(key) {
+          diff_unspent_outputs.insert(*key, *value)
+        }
+      }
+
+      let mut additional_inputs: Vec<OutPoint> = vec![];
+
+      let mut entries: Vec<(OutPoint, Amount)> = diff_unspent_outputs.iter().collect();
+      entries.sort_by(|a, b| b.1.cmp(&a.1));
+
+      let mut cur_amounts = Amount::ZERO;
+      let mut next_index = 0;
+      for (outpoint, amount) in &entries {
+        if cur_amounts >= need_amount {
+          break;
+        }
+        cur_amounts += *amount;
+        additional_inputs.push(*outpoint);
+        next_index += 1;
+      }
+      if next_index + 1 < entries.len() {
+        additional_inputs.push(entries[next_index]);
+        next_index += 1;
+      }
+
+      if next_index + 1 < entries.len() {
+        additional_inputs.push(entries[next_index]);
+        next_index += 1;
+      }
+      additional_inputs.extend(self.inputs.clone());
+      (cancel_tx, network_fee) =
+        Self::build_cancel_transaction(self.fee_rate, additional_inputs, output, address_type);
+
+      commit_vsize = cancel_tx.vsize() as u64;
+
+      input_amount = Self::get_amount(&cancel_tx, &all_unspent_outputs)?;
+
+      if input_amount <= network_fee {
+        bail!("Input amount less than network fee, has search next two");
+      }
     }
-    cancel_tx.output[0].value = input_amount - network_fee - service_fee;
+
+
+    cancel_tx.output[0].value = input_amount - network_fee;
     for input in &mut cancel_tx.input {
       input.witness = Witness::new();
     }
 
-    let unsigned_transaction_psbt = Self::get_psbt(&cancel_tx, &unspent_outputs, &self.source)?;
+    let unsigned_transaction_psbt = Self::get_psbt(&cancel_tx, &all_unspent_outputs, &self.source)?;
     let unsigned_commit_custom = Self::get_custom(&unsigned_transaction_psbt);
 
     log::info!("Build cancel success");
