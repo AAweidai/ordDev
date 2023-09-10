@@ -70,9 +70,15 @@ impl Cancel {
     let cancel_unspent_outputs =
       index.get_unspent_outputs_by_outpoints(&self.inputs, self.default_amount)?;
 
-    let mut all_unspent_outputs = index
-      .get_unspent_outputs_by_mempool_v2(&format!("{}", self.source), BTreeMap::new())
-      .unwrap_or(BTreeMap::new());
+    let mut all_unspent_outputs = if self.default_amount.is_none() {
+      index
+        .get_unspent_outputs_by_mempool_v2(&format!("{}", self.source), BTreeMap::new())
+        .unwrap_or(BTreeMap::new())
+    } else {
+      index
+        .get_unspent_outputs_by_mempool_v3(&format!("{}", self.source), BTreeMap::new())
+        .unwrap_or(BTreeMap::new())
+    };
     all_unspent_outputs.extend(cancel_unspent_outputs.clone());
 
     let mut service_fee = service_fee.unwrap_or(Amount::ZERO).to_sat();
