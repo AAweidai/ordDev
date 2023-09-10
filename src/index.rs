@@ -602,7 +602,7 @@ impl Index {
           default_input_amount.unwrap(),
         );
       } else {
-        let tx = tx.unwrap();
+        let tx: Transaction = tx.unwrap();
         utxos.insert(
           *input,
           Amount::from_sat(tx.output[input.vout as usize].value),
