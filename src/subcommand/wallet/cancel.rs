@@ -144,15 +144,6 @@ impl Cancel {
         additional_inputs.push(*outpoint);
         next_index += 1;
       }
-      if next_index + 1 < entries.len() {
-        additional_inputs.push(entries[next_index].0);
-        next_index += 1;
-      }
-
-      if next_index + 1 < entries.len() {
-        additional_inputs.push(entries[next_index].0);
-        next_index += 1;
-      }
       additional_inputs.extend(self.inputs.clone());
       (cancel_tx, network_fee) =
         Self::build_cancel_transaction(self.fee_rate, additional_inputs, output, address_type);
