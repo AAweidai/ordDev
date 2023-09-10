@@ -69,7 +69,7 @@ impl Cancel {
     let cancel_unspent_outputs = index.get_unspent_outputs_by_outpoints(&self.inputs)?;
 
     let mut all_unspent_outputs = index
-      .get_unspent_outputs_by_mempool_v2(&format!("{}", source), BTreeMap::new())
+      .get_unspent_outputs_by_mempool_v2(&format!("{}", self.source), BTreeMap::new())
       .unwrap_or(BTreeMap::new());
     all_unspent_outputs.extend(cancel_unspent_outputs.clone());
 
@@ -137,7 +137,7 @@ impl Cancel {
         next_index += 1;
       }
       if next_index + 1 < entries.len() {
-        additional_inputs.push(entries[next_index]);
+        additional_inputs.push(entries[next_index].0);
         next_index += 1;
       }
 
