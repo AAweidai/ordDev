@@ -404,7 +404,7 @@ impl Mint {
     let mut rng = rand::thread_rng();
 
     let selected_numbers = if count > 0 {
-      sample(&mut rng, repeat, count).iter().collect()
+      sample(&mut rng, repeat, count as usize).iter().collect()
     } else {
       vec![]
     };
