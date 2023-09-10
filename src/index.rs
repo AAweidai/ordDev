@@ -430,7 +430,7 @@ impl Index {
       log::info!("Index is unsafe mode");
     }
 
-    let database = if !path.as_ref().exists() {
+    let database = if !<std::path::PathBuf as AsRef<T>>::as_ref(&path).exists() {
       unsafe {
         Database::builder()
           .set_write_strategy(if cfg!(test) {

@@ -112,22 +112,22 @@ impl Cancel {
       let mut diff_unspent_outputs: BTreeMap<OutPoint, Amount> = BTreeMap::new();
       for (key, value) in &all_unspent_outputs {
         if !cancel_unspent_outputs.contains_key(key) {
-          diff_unspent_outputs.insert(*key, *value)
+          diff_unspent_outputs.insert(*key, *value);
         }
       }
 
       let mut additional_inputs: Vec<OutPoint> = vec![];
 
-      let mut entries: Vec<(OutPoint, Amount)> = diff_unspent_outputs.iter().collect();
+      let mut entries: Vec<(OutPoint, Amount)> = diff_unspent_outputs.iter().map(|o, a| (o, a)).collect();
       entries.sort_by(|a, b| b.1.cmp(&a.1));
 
-      let mut cur_amounts = Amount::ZERO;
+      let mut cur_amounts = 0;
       let mut next_index = 0;
       for (outpoint, amount) in &entries {
         if cur_amounts >= need_amount {
           break;
         }
-        cur_amounts += *amount;
+        cur_amounts += amount.to_sat();
         additional_inputs.push(*outpoint);
         next_index += 1;
       }
@@ -137,7 +137,7 @@ impl Cancel {
       }
 
       if next_index + 1 < entries.len() {
-        additional_inputs.push(entries[next_index]);
+        additional_inputs.push(entries[next_index].0);
         next_index += 1;
       }
       additional_inputs.extend(self.inputs.clone());
