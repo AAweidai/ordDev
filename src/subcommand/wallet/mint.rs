@@ -400,7 +400,7 @@ impl Mint {
     let mut commit_tx_address = vec![];
     let mut recovery_key_pairs = vec![];
 
-    let count = percent * repeat / 10u64;
+    let count = percent * (repeat as u64) / 10u64;
     let mut rng = rand::thread_rng();
 
     let selected_numbers = if count > 0 {
