@@ -427,38 +427,50 @@ impl Index {
     };
 
     if is_unsafe {
-      log::info!("Index is unsafe mode")
+      log::info!("Index is unsafe mode");
     }
 
-    let database = match unsafe { Database::builder().open_mmapped(&path) } {
-      Ok(database) => {
-        if !is_unsafe {
-          let schema_version = database
-            .begin_read()?
-            .open_table(STATISTIC_TO_COUNT)?
-            .get(&Statistic::Schema.key())?
-            .map(|x| x.value())
-            .unwrap_or(0);
+    let database = if !path.as_ref().exists() {
+      unsafe {
+        Database::builder()
+          .set_write_strategy(if cfg!(test) {
+            WriteStrategy::Checksum
+          } else {
+            WriteStrategy::TwoPhase
+          })
+          .create_mmapped(&path)?
+      }
+    } else {
+      match unsafe { Database::builder().open_mmapped(&path) } {
+        Ok(database) => {
+          if !is_unsafe {
+            let schema_version = database
+              .begin_read()?
+              .open_table(STATISTIC_TO_COUNT)?
+              .get(&Statistic::Schema.key())?
+              .map(|x| x.value())
+              .unwrap_or(0);
 
-          match schema_version.cmp(&SCHEMA_VERSION) {
-            cmp::Ordering::Less =>
-              bail!(
+            match schema_version.cmp(&SCHEMA_VERSION) {
+              cmp::Ordering::Less =>
+                bail!(
               "index at `{}` appears to have been built with an older, incompatible version of ord, consider deleting and rebuilding the index: index schema {schema_version}, ord schema {SCHEMA_VERSION}",
               path.display()
             ),
-            cmp::Ordering::Greater =>
-              bail!(
+              cmp::Ordering::Greater =>
+                bail!(
               "index at `{}` appears to have been built with a newer, incompatible version of ord, consider updating ord: index schema {schema_version}, ord schema {SCHEMA_VERSION}",
               path.display()
             ),
-            cmp::Ordering::Equal => {}
+              cmp::Ordering::Equal => {}
+            }
+          } else {
+            log::info!("Unsafe open tmp database")
           }
-        } else {
-          log::info!("Unsafe open tmp database")
+          database
         }
-        database
+        Err(error) => return Err(error.into()),
       }
-      Err(error) => return Err(error.into()),
     };
 
     let genesis_block_coinbase_transaction =
