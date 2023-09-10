@@ -15,7 +15,7 @@ pub struct Cancel {
   pub inputs: Vec<OutPoint>,
   #[clap(long, help = "Use fee rate of <FEE_RATE> sats/vB")]
   pub fee_rate: FeeRate,
-  pub default_amount: Option<Amount>
+  pub default_amount: Option<Amount>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,7 +67,8 @@ impl Cancel {
     // index.update()?;
 
     log::info!("Get utxo...");
-    let cancel_unspent_outputs = index.get_unspent_outputs_by_outpoints(&self.inputs, self.default_amount)?;
+    let cancel_unspent_outputs =
+      index.get_unspent_outputs_by_outpoints(&self.inputs, self.default_amount)?;
 
     let mut all_unspent_outputs = index
       .get_unspent_outputs_by_mempool_v2(&format!("{}", self.source), BTreeMap::new())
