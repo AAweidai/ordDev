@@ -162,6 +162,7 @@ impl Cancel {
       input_amount = Self::get_amount(&cancel_tx, &all_unspent_outputs)?;
 
       if input_amount <= network_fee {
+        log::warn!("{:?}", additional_inputs);
         bail!("Input amount less than network fee, has search next two");
       }
     }
