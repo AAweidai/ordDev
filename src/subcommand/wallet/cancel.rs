@@ -155,7 +155,7 @@ impl Cancel {
       }
       additional_inputs.extend(self.inputs.clone());
       (cancel_tx, network_fee) =
-        Self::build_cancel_transaction(self.fee_rate, additional_inputs, output, address_type);
+        Self::build_cancel_transaction(self.fee_rate, additional_inputs.clone(), output, address_type);
 
       commit_vsize = cancel_tx.vsize() as u64;
 
